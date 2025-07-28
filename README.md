@@ -45,36 +45,36 @@ Each question has a weightage between 3-10 points, allowing for balanced quiz ge
 ### Installation
 
 1. Clone the repository:
-   \`\`\`bash
+   ```bash
    git clone <repository-url>
    cd quiz-app
-   \`\`\`
+   ```
 
 2. Install dependencies:
-   \`\`\`bash
+   ```bash
    npm install
-   \`\`\`
+   ```
 
 3. Start the development server:
-   \`\`\`bash
+   ```bash
    npm run dev
-   \`\`\`
+   ```
 
-4. Open your browser and navigate to \`http://localhost:5173\`
+4. Open your browser and navigate to `http://localhost:5173`
 
 ### Building for Production
 
 To build the application for production:
 
-\`\`\`bash
+```bash
 npm run build
-\`\`\`
+```
 
 The built files will be in the \`dist\` directory.
 
 ## Project Structure
 
-\`\`\`
+```
 src/
 ├── components/
 │   ├── QuestionComponent.tsx    # Individual question display
@@ -89,7 +89,7 @@ src/
 ├── App.tsx                      # Main application component
 ├── main.tsx                     # Application entry point
 └── index.css                    # Global styles with Tailwind
-\`\`\`
+```
 
 ## Algorithm Details
 
@@ -109,9 +109,9 @@ This ensures each quiz attempt is unique while maintaining consistent difficulty
 
 ### Adding Questions
 
-Edit the \`src/data/questions.ts\` file to add or modify questions:
+Edit the `src/data/questions.ts` file to add or modify questions:
 
-\`\`\`typescript
+```typescript
 {
   id: 21,
   question: "Your question here?",
@@ -119,7 +119,7 @@ Edit the \`src/data/questions.ts\` file to add or modify questions:
   correctAnswer: 2, // Index of correct option (0-based)
   weightage: 8     // Points for this question (3-10 recommended)
 }
-\`\`\`
+```
 
 **Important**: The question selection algorithm works best when:
 - Questions have weights between 3-10 points
@@ -128,25 +128,25 @@ Edit the \`src/data/questions.ts\` file to add or modify questions:
 
 ### Customizing Target Score
 
-To change the target score from 50 points, modify the \`selectRandomQuestions\` call in \`src/App.tsx\`:
+To change the target score from 50 points, modify the `selectRandomQuestions` call in `src/App.tsx`:
 
-\`\`\`typescript
+```typescript
 const randomQuestions = selectRandomQuestions(questionBank, 60, 10); // 60 points, 10 questions
-\`\`\`
+```
 
 ### Styling
 
 The application uses TailwindCSS for styling. You can customize:
-- Colors and themes in \`tailwind.config.js\`
+- Colors and themes in `tailwind.config.js`
 - Component styles in individual component files
-- Global styles in \`src/index.css\`
+- Global styles in `src/index.css`
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch (\`git checkout -b feature/amazing-feature\`)
-3. Commit your changes (\`git commit -m 'Add some amazing feature'\`)
-4. Push to the branch (\`git push origin feature/amazing-feature\`)
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
 ## License
