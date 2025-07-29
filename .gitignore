@@ -22,3 +22,40 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Google Cloud and other credential files
+**/credentials.json
+**/service-account*.json
+**/*-credentials*.json
+**/*-key*.json
+**/*-secret*.json
+**/google-credentials*.json
+**/gcp-*.json
+**/firebase-adminsdk-*.json
+
+# Other sensitive files
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/secrets.json
+**/config/secrets.js
+**/config/credentials.js
+
+# Backup files that might contain secrets
+*.backup
+*.bak
+*.orig
+
+# Test files that might contain credentials
+**/test-credentials*
+**/dummy-creds*
+**/*-test.json

@@ -2,35 +2,72 @@ import React, { useState, useCallback, useEffect } from 'react';
 import QuestionComponent from './components/QuestionComponent';
 import Results from './components/Results';
 import QuizDebugInfo from './components/QuizDebugInfo';
-import { questionBank } from './data/questions';
 import { UserAnswer, QuizResult, QuizQuestion } from './types/quiz';
 import { selectRandomQuestions } from './utils/questionSelector';
+import { useQuestions } from './hooks/useQuestions';
 
 const App: React.FC = () => {
+    const { questions: allQuestions, loading, error } = useQuestions();
     const [selectedQuestions, setSelectedQuestions] = useState<QuizQuestion[]>([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
     const [userAnswers, setUserAnswers] = useState<UserAnswer[]>([]);
     const [isQuizCompleted, setIsQuizCompleted] = useState<boolean>(false);
     const [quizResults, setQuizResults] = useState<QuizResult | null>(null);
     const [isQuizStarted, setIsQuizStarted] = useState<boolean>(false);
+    const [backendHealth, setBackendHealth] = useState<string>('checking...');
+
+    // Check backend health
+    useEffect(() => {
+        const checkBackend = async () => {
+            try {
+                console.log('🏥 Checking backend health...');
+                const response = await fetch('http://localhost:5000/api/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    setBackendHealth(`✅ ${data.message}`);
+                    console.log('🏥 Backend health check passed:', data);
+                } else {
+                    setBackendHealth(`❌ Backend responded with ${response.status}`);
+                }
+            } catch (error) {
+                setBackendHealth(`❌ Backend unreachable: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                console.error('🏥 Backend health check failed:', error);
+            }
+        };
+
+        checkBackend();
+    }, []);
+
+    // Debug logging
+    useEffect(() => {
+        console.log('🎯 App mounted - Debug info:', {
+            allQuestionsLength: allQuestions.length,
+            loading,
+            error,
+            isQuizStarted,
+            backendHealth
+        });
+    }, [allQuestions, loading, error, isQuizStarted, backendHealth]);
 
     // Initialize quiz with random questions
     const initializeQuiz = useCallback(() => {
-        const randomQuestions = selectRandomQuestions(questionBank, 50, 10);
+        if (allQuestions.length === 0) return;
+
+        const randomQuestions = selectRandomQuestions(allQuestions, 50, 10);
         setSelectedQuestions(randomQuestions);
         setCurrentQuestionIndex(0);
         setUserAnswers([]);
         setIsQuizCompleted(false);
         setQuizResults(null);
         setIsQuizStarted(true);
-    }, []);
+    }, [allQuestions]);
 
-    // Initialize quiz on first load
+    // Initialize quiz when questions are loaded
     useEffect(() => {
-        if (!isQuizStarted) {
+        if (!isQuizStarted && allQuestions.length > 0) {
             initializeQuiz();
         }
-    }, [initializeQuiz, isQuizStarted]);
+    }, [initializeQuiz, isQuizStarted, allQuestions]);
 
     const handleAnswerSelect = useCallback((questionId: number, optionIndex: number) => {
         setUserAnswers(prevAnswers => {
@@ -114,13 +151,41 @@ const App: React.FC = () => {
         );
     }
 
-    // Show loading state while questions are being selected
-    if (selectedQuestions.length === 0) {
+    // Show loading state while questions are being loaded
+    if (loading || selectedQuestions.length === 0) {
+        console.log('🔄 Rendering loading state:', { loading, selectedQuestionsLength: selectedQuestions.length, allQuestionsLength: allQuestions.length });
         return (
             <div className="min-h-screen bg-gray-100 py-8 flex items-center justify-center">
                 <div className="bg-white rounded-lg shadow-md p-8 text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Preparing your quiz...</p>
+                    <p className="text-gray-600">
+                        {loading ? 'Loading questions...' : 'Preparing your quiz...'}
+                    </p>
+                    <div className="mt-4 text-sm text-gray-500">
+                        <p>Debug: Loading={loading ? 'true' : 'false'}</p>
+                        <p>Questions loaded: {allQuestions.length}</p>
+                        <p>Error: {error || 'none'}</p>
+                        <p>Backend: {backendHealth}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Show error state if questions failed to load
+    if (error && allQuestions.length === 0) {
+        return (
+            <div className="min-h-screen bg-gray-100 py-8 flex items-center justify-center">
+                <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                    <div className="text-red-500 text-6xl mb-4">⚠️</div>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-2">Failed to Load Questions</h2>
+                    <p className="text-gray-600 mb-4">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200"
+                    >
+                        Retry
+                    </button>
                 </div>
             </div>
         );
