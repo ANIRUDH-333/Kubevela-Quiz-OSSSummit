@@ -113,7 +113,7 @@ function transformSheetDataToQuestions(rows) {
                     // If it's a number, use it as weightage
                     weightage = parseInt(difficultyOrWeightage);
                 } else {
-                    // If it's difficulty text, convert to weightage
+                    // If it's difficulty text, convert to weightage based on specified mapping
                     switch (difficultyOrWeightage) {
                         case 'easy':
                             weightage = 3;
@@ -122,9 +122,10 @@ function transformSheetDataToQuestions(rows) {
                             weightage = 6;
                             break;
                         case 'hard':
-                            weightage = 9;
+                            weightage = 8;
                             break;
                         default:
+                            console.warn(`Unknown difficulty level: "${difficultyOrWeightage}", using default weightage of 5`);
                             weightage = 5;
                     }
                 }
@@ -160,147 +161,182 @@ function transformSheetDataToQuestions(rows) {
     return questions;
 }
 
-// Enhanced fallback questions with more variety
+// Enhanced fallback questions with proper difficulty-based weightage (Easy=3, Medium=6, Hard=8)
 const fallbackQuestions = [
     {
         id: 1,
         question: "What is the capital of France?",
         options: ["London", "Berlin", "Paris", "Madrid"],
         correctAnswer: 2,
-        weightage: 5
+        weightage: 3 // Easy
     },
     {
         id: 2,
         question: "Which programming language is known for its use in web development and has a React library?",
         options: ["Python", "JavaScript", "Java", "C++"],
         correctAnswer: 1,
-        weightage: 10
+        weightage: 6 // Medium
     },
     {
         id: 3,
         question: "What is 2 + 2?",
         options: ["3", "4", "5", "6"],
         correctAnswer: 1,
-        weightage: 3
+        weightage: 3 // Easy
     },
     {
         id: 4,
         question: "Which planet is known as the Red Planet?",
         options: ["Venus", "Mars", "Jupiter", "Saturn"],
         correctAnswer: 1,
-        weightage: 7
+        weightage: 3 // Easy
     },
     {
         id: 5,
         question: "What is the largest ocean on Earth?",
         options: ["Atlantic Ocean", "Indian Ocean", "Arctic Ocean", "Pacific Ocean"],
         correctAnswer: 3,
-        weightage: 6
+        weightage: 3 // Easy
     },
     {
         id: 6,
         question: "Who wrote 'Romeo and Juliet'?",
         options: ["Charles Dickens", "William Shakespeare", "Jane Austen", "Mark Twain"],
         correctAnswer: 1,
-        weightage: 8
+        weightage: 6 // Medium
     },
     {
         id: 7,
         question: "What is the chemical symbol for gold?",
         options: ["Go", "Gd", "Au", "Ag"],
         correctAnswer: 2,
-        weightage: 9
+        weightage: 6 // Medium
     },
     {
         id: 8,
         question: "Which year did World War II end?",
         options: ["1944", "1945", "1946", "1947"],
         correctAnswer: 1,
-        weightage: 4
+        weightage: 6 // Medium
     },
     {
         id: 9,
         question: "What is the smallest prime number?",
         options: ["0", "1", "2", "3"],
         correctAnswer: 2,
-        weightage: 5
+        weightage: 6 // Medium
     },
     {
         id: 10,
         question: "Which continent is the largest by area?",
         options: ["Africa", "Asia", "North America", "Europe"],
         correctAnswer: 1,
-        weightage: 6
+        weightage: 3 // Easy
     },
     {
         id: 11,
         question: "What is the speed of light in vacuum?",
         options: ["300,000 km/s", "150,000 km/s", "450,000 km/s", "600,000 km/s"],
         correctAnswer: 0,
-        weightage: 8
+        weightage: 8 // Hard
     },
     {
         id: 12,
         question: "Which HTML tag is used to create a hyperlink?",
         options: ["<link>", "<a>", "<href>", "<url>"],
         correctAnswer: 1,
-        weightage: 4
+        weightage: 3 // Easy
     },
     {
         id: 13,
         question: "What is the square root of 144?",
         options: ["10", "11", "12", "13"],
         correctAnswer: 2,
-        weightage: 3
+        weightage: 3 // Easy
     },
     {
         id: 14,
         question: "Who painted the Mona Lisa?",
         options: ["Pablo Picasso", "Vincent van Gogh", "Leonardo da Vinci", "Michelangelo"],
         correctAnswer: 2,
-        weightage: 7
+        weightage: 6 // Medium
     },
     {
         id: 15,
         question: "What is the most abundant gas in Earth's atmosphere?",
         options: ["Oxygen", "Carbon Dioxide", "Nitrogen", "Hydrogen"],
         correctAnswer: 2,
-        weightage: 6
+        weightage: 6 // Medium
     },
     {
         id: 16,
         question: "In React, what hook is used to manage component state?",
         options: ["useEffect", "useState", "useContext", "useReducer"],
         correctAnswer: 1,
-        weightage: 5
+        weightage: 6 // Medium
     },
     {
         id: 17,
         question: "What is the currency of Japan?",
         options: ["Yuan", "Won", "Yen", "Dong"],
         correctAnswer: 2,
-        weightage: 4
+        weightage: 3 // Easy
     },
     {
         id: 18,
         question: "Which CSS property is used to change text color?",
         options: ["font-color", "text-color", "color", "background-color"],
         correctAnswer: 2,
-        weightage: 3
+        weightage: 3 // Easy
     },
     {
         id: 19,
         question: "What is the tallest mountain in the world?",
         options: ["K2", "Mount Everest", "Kangchenjunga", "Lhotse"],
         correctAnswer: 1,
-        weightage: 5
+        weightage: 3 // Easy
     },
     {
         id: 20,
         question: "Which database query language is most commonly used?",
         options: ["NoSQL", "SQL", "GraphQL", "MongoDB"],
         correctAnswer: 1,
-        weightage: 6
+        weightage: 6 // Medium
+    },
+    {
+        id: 21,
+        question: "What is the time complexity of binary search in a sorted array?",
+        options: ["O(n)", "O(log n)", "O(n²)", "O(1)"],
+        correctAnswer: 1,
+        weightage: 8 // Hard
+    },
+    {
+        id: 22,
+        question: "In computer science, what does 'NP-Complete' refer to?",
+        options: ["Not Polynomial Complete", "Non-deterministic Polynomial Complete", "Nearly Perfect Complete", "Network Protocol Complete"],
+        correctAnswer: 1,
+        weightage: 8 // Hard
+    },
+    {
+        id: 23,
+        question: "What is the result of 15 % 4 in most programming languages?",
+        options: ["3", "3.75", "4", "1"],
+        correctAnswer: 0,
+        weightage: 6 // Medium
+    },
+    {
+        id: 24,
+        question: "Which sorting algorithm has the best average-case time complexity?",
+        options: ["Bubble Sort", "Quick Sort", "Selection Sort", "Insertion Sort"],
+        correctAnswer: 1,
+        weightage: 8 // Hard
+    },
+    {
+        id: 25,
+        question: "What does HTTP stand for?",
+        options: ["HyperText Transfer Protocol", "High Tech Transfer Protocol", "HyperText Translation Protocol", "Home Tool Transfer Protocol"],
+        correctAnswer: 0,
+        weightage: 3 // Easy
     }
 ];
 
