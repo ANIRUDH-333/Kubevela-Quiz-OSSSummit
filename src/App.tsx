@@ -53,7 +53,9 @@ const App: React.FC = () => {
     const initializeQuiz = useCallback(() => {
         if (allQuestions.length === 0) return;
 
-        const randomQuestions = selectRandomQuestions(allQuestions, 50, 10);
+        // Updated parameters: target score of 100 points for 10 questions
+        // This allows for a good mix of Easy (5), Medium (10), and Hard (20) questions
+        const randomQuestions = selectRandomQuestions(allQuestions, 100, 10);
         setSelectedQuestions(randomQuestions);
         setCurrentQuestionIndex(0);
         setUserAnswers([]);
@@ -101,10 +103,41 @@ const App: React.FC = () => {
         let totalScore = 0;
         const maxScore = selectedQuestions.reduce((sum, question) => sum + question.weightage, 0);
 
+        // Initialize difficulty breakdown
+        const difficultyBreakdown = {
+            easy: { correct: 0, total: 0, points: 0 },
+            medium: { correct: 0, total: 0, points: 0 },
+            hard: { correct: 0, total: 0, points: 0 }
+        };
+
+        // Count questions by difficulty
+        selectedQuestions.forEach(question => {
+            if (question.weightage === 5) {
+                difficultyBreakdown.easy.total++;
+            } else if (question.weightage === 10) {
+                difficultyBreakdown.medium.total++;
+            } else if (question.weightage === 20) {
+                difficultyBreakdown.hard.total++;
+            }
+        });
+
+        // Calculate score and difficulty breakdown
         userAnswers.forEach(answer => {
             const question = selectedQuestions.find(q => q.id === answer.questionId);
             if (question && question.correctAnswer === answer.selectedOption) {
                 totalScore += question.weightage;
+                
+                // Update difficulty-specific correct answers and points
+                if (question.weightage === 5) {
+                    difficultyBreakdown.easy.correct++;
+                    difficultyBreakdown.easy.points += question.weightage;
+                } else if (question.weightage === 10) {
+                    difficultyBreakdown.medium.correct++;
+                    difficultyBreakdown.medium.points += question.weightage;
+                } else if (question.weightage === 20) {
+                    difficultyBreakdown.hard.correct++;
+                    difficultyBreakdown.hard.points += question.weightage;
+                }
             }
         });
 
@@ -115,7 +148,8 @@ const App: React.FC = () => {
             maxScore,
             percentage,
             answeredQuestions: userAnswers.length,
-            totalQuestions: selectedQuestions.length
+            totalQuestions: selectedQuestions.length,
+            difficultyBreakdown
         };
     }, [userAnswers, selectedQuestions]);
 

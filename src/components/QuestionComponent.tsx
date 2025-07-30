@@ -25,18 +25,40 @@ const QuestionComponent: React.FC<QuestionComponentProps> = ({
         }
     };
 
+    const getDifficultyInfo = (weightage: number) => {
+        switch (weightage) {
+            case 5:
+                return { level: 'Easy', color: 'bg-green-100 text-green-800' };
+            case 10:
+                return { level: 'Medium', color: 'bg-yellow-100 text-yellow-800' };
+            case 20:
+                return { level: 'Hard', color: 'bg-red-100 text-red-800' };
+            default:
+                return { level: 'Unknown', color: 'bg-gray-100 text-gray-800' };
+        }
+    };
+
+    const difficultyInfo = getDifficultyInfo(question.weightage);
+
     return (
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                    Question {questionNumber}
-                </h3>
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-semibold text-gray-800">
+                        Question {questionNumber}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${difficultyInfo.color}`}>
+                            {difficultyInfo.level}
+                        </span>
+                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                            {question.weightage} pts
+                        </span>
+                    </div>
+                </div>
                 <p className="text-gray-700 text-base leading-relaxed">
                     {question.question}
                 </p>
-                <span className="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
-                    Weightage: {question.weightage} points
-                </span>
             </div>
 
             <div className="space-y-3">

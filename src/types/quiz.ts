@@ -17,4 +17,9 @@ export interface QuizResult {
     percentage: number;
     answeredQuestions: number;
     totalQuestions: number;
+    difficultyBreakdown?: {
+        easy: { correct: number; total: number; points: number };
+        medium: { correct: number; total: number; points: number };
+        hard: { correct: number; total: number; points: number };
+    };
 }
