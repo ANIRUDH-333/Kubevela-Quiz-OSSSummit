@@ -3,6 +3,10 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { google } from 'googleapis';
 import fs from 'fs';
+import session from 'express-session';
+import passport from 'passport';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { Strategy as GitHubStrategy } from 'passport-github2';
 
 dotenv.config();
 
@@ -10,8 +14,128 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:5173', // Frontend URL
+    credentials: true
+}));
 app.use(express.json());
+
+// Session configuration
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'quiz-app-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false, // Set to true in production with HTTPS
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
+// Passport configuration
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Passport serialization
+passport.serializeUser((user, done) => {
+    done(null, user);
+});
+
+passport.deserializeUser((user, done) => {
+    done(null, user);
+});
+
+// Google OAuth Strategy
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    passport.use(new GoogleStrategy({
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: "/auth/google/callback"
+    }, async (accessToken, refreshToken, profile, done) => {
+        const user = {
+            id: profile.id,
+            provider: 'google',
+            name: profile.displayName,
+            email: profile.emails[0].value,
+            avatar: profile.photos[0].value
+        };
+        
+        // Save user data to Google Sheets
+        await saveUserToSheets(user);
+        
+        return done(null, user);
+    }));
+}
+
+// GitHub OAuth Strategy
+if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+    passport.use(new GitHubStrategy({
+        clientID: process.env.GITHUB_CLIENT_ID,
+        clientSecret: process.env.GITHUB_CLIENT_SECRET,
+        callbackURL: "/auth/github/callback"
+    }, async (accessToken, refreshToken, profile, done) => {
+        const user = {
+            id: profile.id,
+            provider: 'github',
+            name: profile.displayName || profile.username,
+            email: profile.emails && profile.emails[0] ? profile.emails[0].value : null,
+            avatar: profile.photos[0].value,
+            username: profile.username
+        };
+        
+        // Save user data to Google Sheets
+        await saveUserToSheets(user);
+        
+        return done(null, user);
+    }));
+}
+
+// Helper function to save user data to Google Sheets
+async function saveUserToSheets(user) {
+    if (!isGoogleSheetsConfigured) {
+        console.log('📝 User data (Google Sheets not configured):', {
+            timestamp: new Date().toISOString(),
+            provider: user.provider,
+            email: user.email,
+            name: user.name,
+            userId: user.id
+        });
+        return;
+    }
+
+    try {
+        const userDataRange = 'UserData!A:E';
+        const timestamp = new Date().toISOString();
+        
+        const values = [[
+            timestamp,
+            user.email || '',
+            user.name || '',
+            user.provider || '',
+            user.id || ''
+        ]];
+
+        await sheets.spreadsheets.values.append({
+            spreadsheetId: SPREADSHEET_ID,
+            range: userDataRange,
+            valueInputOption: 'RAW',
+            resource: {
+                values: values
+            }
+        });
+
+        console.log(`✅ OAuth user data saved: ${user.email} (${user.provider})`);
+    } catch (error) {
+        console.error('❌ Error saving OAuth user data:', error.message);
+        // Still log for manual processing
+        console.log('📝 OAuth user data (for manual processing):', {
+            timestamp: new Date().toISOString(),
+            provider: user.provider,
+            email: user.email,
+            name: user.name,
+            userId: user.id
+        });
+    }
+}
 
 // Google Sheets configuration
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID;
@@ -340,6 +464,73 @@ const fallbackQuestions = [
     }
 ];
 
+// Authentication middleware
+const requireAuth = (req, res, next) => {
+    if (req.isAuthenticated()) {
+        return next();
+    }
+    res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+    });
+};
+
+// OAuth Routes
+app.get('/auth/google', 
+    passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+app.get('/auth/google/callback',
+    passport.authenticate('google', { failureRedirect: 'http://localhost:5173?error=auth_failed' }),
+    (req, res) => {
+        // Successful authentication, redirect to frontend
+        res.redirect('http://localhost:5173?auth=success');
+    }
+);
+
+app.get('/auth/github',
+    passport.authenticate('github', { scope: ['user:email'] })
+);
+
+app.get('/auth/github/callback',
+    passport.authenticate('github', { failureRedirect: 'http://localhost:5173?error=auth_failed' }),
+    (req, res) => {
+        // Successful authentication, redirect to frontend
+        res.redirect('http://localhost:5173?auth=success');
+    }
+);
+
+// Get current user
+app.get('/auth/user', (req, res) => {
+    if (req.isAuthenticated()) {
+        res.json({
+            success: true,
+            user: req.user
+        });
+    } else {
+        res.status(401).json({
+            success: false,
+            message: 'Not authenticated'
+        });
+    }
+});
+
+// Logout
+app.post('/auth/logout', (req, res) => {
+    req.logout((err) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: 'Logout failed'
+            });
+        }
+        res.json({
+            success: true,
+            message: 'Logged out successfully'
+        });
+    });
+});
+
 // Routes
 app.get('/api/health', (req, res) => {
     res.json({
@@ -575,137 +766,6 @@ app.post('/api/questions/refresh', async (req, res) => {
     }
 });
 
-// Save user data to Google Sheets
-app.post('/api/user-data', async (req, res) => {
-    try {
-        const { email, name, companyName } = req.body;
-
-        // Validate required fields
-        if (!email || !name) {
-            return res.status(400).json({
-                success: false,
-                message: 'Email and name are required'
-            });
-        }
-
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid email format'
-            });
-        }
-
-        if (isGoogleSheetsConfigured) {
-            try {
-                // Try to save to Google Sheets
-                // Check if user data sheet exists, if not create it or use a different range
-                const userDataRange = 'UserData!A:D'; // Assuming UserData sheet exists
-                const timestamp = new Date().toISOString();
-                
-                const values = [[
-                    timestamp,
-                    email.trim(),
-                    name.trim(),
-                    companyName ? companyName.trim() : ''
-                ]];
-
-                await sheets.spreadsheets.values.append({
-                    spreadsheetId: SPREADSHEET_ID,
-                    range: userDataRange,
-                    valueInputOption: 'RAW',
-                    resource: {
-                        values: values
-                    }
-                });
-
-                console.log(`✅ User data saved to Google Sheets: ${email}`);
-                
-                res.json({
-                    success: true,
-                    message: 'User data saved successfully',
-                    timestamp: timestamp
-                });
-
-            } catch (sheetsError) {
-                // If specific sheet doesn't exist, try fallback to main sheet with different range
-                console.warn('⚠️ UserData sheet not found, trying fallback approach:', sheetsError.message);
-                
-                try {
-                    // Use a different range in the main sheet
-                    const fallbackRange = 'Sheet2!A:D'; // Or any other available sheet
-                    const timestamp = new Date().toISOString();
-                    
-                    const values = [[
-                        timestamp,
-                        email.trim(),
-                        name.trim(),
-                        companyName ? companyName.trim() : ''
-                    ]];
-
-                    await sheets.spreadsheets.values.append({
-                        spreadsheetId: SPREADSHEET_ID,
-                        range: fallbackRange,
-                        valueInputOption: 'RAW',
-                        resource: {
-                            values: values
-                        }
-                    });
-
-                    console.log(`✅ User data saved to fallback sheet: ${email}`);
-                    
-                    res.json({
-                        success: true,
-                        message: 'User data saved successfully (fallback)',
-                        timestamp: timestamp
-                    });
-
-                } catch (fallbackError) {
-                    console.error('❌ Failed to save to both primary and fallback sheets:', fallbackError.message);
-                    
-                    // Log the data for manual processing
-                    console.log('📝 User data (for manual processing):', {
-                        timestamp: new Date().toISOString(),
-                        email: email.trim(),
-                        name: name.trim(),
-                        companyName: companyName ? companyName.trim() : ''
-                    });
-                    
-                    res.json({
-                        success: true,
-                        message: 'User data received and logged (sheets unavailable)',
-                        note: 'Data saved to server logs for manual processing'
-                    });
-                }
-            }
-        } else {
-            // Google Sheets not configured, log data for manual processing
-            const userData = {
-                timestamp: new Date().toISOString(),
-                email: email.trim(),
-                name: name.trim(),
-                companyName: companyName ? companyName.trim() : ''
-            };
-            
-            console.log('📝 User data (Google Sheets not configured):', userData);
-            
-            res.json({
-                success: true,
-                message: 'User data received and logged',
-                note: 'Google Sheets not configured - data saved to server logs'
-            });
-        }
-
-    } catch (error) {
-        console.error('❌ Error saving user data:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to save user data'
-        });
-    }
-});
-
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
@@ -722,7 +782,11 @@ app.listen(PORT, async () => {
     console.log(`📋 Questions API: http://localhost:${PORT}/api/questions`);
     console.log(`📊 Stats API: http://localhost:${PORT}/api/questions/stats`);
     console.log(`🔄 Refresh API: http://localhost:${PORT}/api/questions/refresh`);
-    console.log(`👤 User Data API: http://localhost:${PORT}/api/user-data`);
+    console.log(`� OAuth Routes:`);
+    console.log(`   Google: http://localhost:${PORT}/auth/google`);
+    console.log(`   GitHub: http://localhost:${PORT}/auth/github`);
+    console.log(`   User Info: http://localhost:${PORT}/auth/user`);
+    console.log(`   Logout: http://localhost:${PORT}/auth/logout`);
     console.log(`⚡ Environment: ${process.env.NODE_ENV || 'development'}`);
 
     // Wait a moment for Google Sheets initialization to complete
@@ -732,6 +796,18 @@ app.listen(PORT, async () => {
             console.log(`📝 Spreadsheet ID: ${SPREADSHEET_ID}`);
         } else {
             console.log(`📈 Google Sheets: NOT CONFIGURED - Using fallback questions`);
+        }
+        
+        // OAuth configuration status
+        const googleOAuthConfigured = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+        const githubOAuthConfigured = !!(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET);
+        
+        console.log(`🔐 OAuth Status:`);
+        console.log(`   Google OAuth: ${googleOAuthConfigured ? 'CONFIGURED' : 'NOT CONFIGURED'}`);
+        console.log(`   GitHub OAuth: ${githubOAuthConfigured ? 'CONFIGURED' : 'NOT CONFIGURED'}`);
+        
+        if (!googleOAuthConfigured && !githubOAuthConfigured) {
+            console.log(`⚠️  No OAuth providers configured. Please set up OAuth credentials in .env`);
         }
     }, 1000);
 });

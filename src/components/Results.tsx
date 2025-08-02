@@ -1,9 +1,10 @@
 import React from 'react';
-import { QuizResult, UserData } from '../types/quiz';
+import { QuizResult } from '../types/quiz';
+import { User } from '../services/authService';
 
 interface ResultsProps {
     results: QuizResult;
-    userData?: UserData | null;
+    userData?: User | null;
     onRetakeQuiz: () => void;
 }
 
@@ -40,11 +41,23 @@ const Results: React.FC<ResultsProps> = ({ results, userData, onRetakeQuiz }) =>
                 <div className="bg-gray-50 rounded-lg p-4 mb-6">
                     <h3 className="text-lg font-semibold text-gray-700 mb-2">Quiz Participant</h3>
                     <div className="space-y-1 text-sm text-gray-600">
-                        <p><span className="font-medium">Name:</span> {userData.name}</p>
+                        <div className="flex items-center gap-2">
+                            {userData.avatar && (
+                                <img 
+                                    src={userData.avatar} 
+                                    alt={userData.name}
+                                    className="w-6 h-6 rounded-full"
+                                />
+                            )}
+                            <p><span className="font-medium">Name:</span> {userData.name}</p>
+                        </div>
                         <p><span className="font-medium">Email:</span> {userData.email}</p>
-                        {userData.companyName && (
-                            <p><span className="font-medium">Company:</span> {userData.companyName}</p>
-                        )}
+                        <p>
+                            <span className="font-medium">Signed in with:</span> 
+                            <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                {userData.provider}
+                            </span>
+                        </p>
                     </div>
                 </div>
             )}

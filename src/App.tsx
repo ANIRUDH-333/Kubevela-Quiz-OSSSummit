@@ -2,11 +2,11 @@ import React, { useState, useCallback, useEffect } from 'react';
 import QuestionComponent from './components/QuestionComponent';
 import Results from './components/Results';
 import QuizDebugInfo from './components/QuizDebugInfo';
-import UserRegistration from './components/UserRegistration';
-import { UserAnswer, QuizResult, QuizQuestion, UserData } from './types/quiz';
+import OAuthLogin from './components/OAuthLogin';
+import { UserAnswer, QuizResult, QuizQuestion } from './types/quiz';
 import { selectRandomQuestions } from './utils/questionSelector';
 import { useQuestions } from './hooks/useQuestions';
-import { saveUserData } from './services/userService';
+import { User, authService } from './services/authService';
 
 const App: React.FC = () => {
     const { questions: allQuestions, loading, error } = useQuestions();
@@ -17,8 +17,8 @@ const App: React.FC = () => {
     const [quizResults, setQuizResults] = useState<QuizResult | null>(null);
     const [isQuizStarted, setIsQuizStarted] = useState<boolean>(false);
     const [backendHealth, setBackendHealth] = useState<string>('checking...');
-    const [userData, setUserData] = useState<UserData | null>(null);
-    const [isRegistrationLoading, setIsRegistrationLoading] = useState<boolean>(false);
+    const [user, setUser] = useState<User | null>(null);
+    const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
 
     // Check backend health
     useEffect(() => {
@@ -68,25 +68,45 @@ const App: React.FC = () => {
         setIsQuizStarted(true);
     }, [allQuestions]);
 
-    // Initialize quiz when questions are loaded
+    // Initialize quiz when questions are loaded and user is authenticated
     useEffect(() => {
-        if (!isQuizStarted && allQuestions.length > 0 && userData) {
+        if (!isQuizStarted && allQuestions.length > 0 && user) {
             initializeQuiz();
         }
-    }, [initializeQuiz, isQuizStarted, allQuestions, userData]);
+    }, [initializeQuiz, isQuizStarted, allQuestions, user]);
 
-    const handleUserRegistration = useCallback(async (formData: UserData) => {
-        setIsRegistrationLoading(true);
+    // Check authentication status on app load
+    useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                const currentUser = await authService.getCurrentUser();
+                setUser(currentUser);
+            } catch (error) {
+                console.error('Error checking authentication:', error);
+            } finally {
+                setIsCheckingAuth(false);
+            }
+        };
+
+        checkAuth();
+    }, []);
+
+    const handleAuthSuccess = useCallback((authenticatedUser: User) => {
+        setUser(authenticatedUser);
+        setIsCheckingAuth(false);
+    }, []);
+
+    const handleLogout = useCallback(async () => {
         try {
-            await saveUserData(formData);
-            setUserData(formData);
-            console.log('✅ User data saved successfully:', formData);
+            await authService.logout();
+            setUser(null);
+            setIsQuizStarted(false);
+            setIsQuizCompleted(false);
+            setQuizResults(null);
+            setUserAnswers([]);
+            setCurrentQuestionIndex(0);
         } catch (error) {
-            console.error('❌ Failed to save user data:', error);
-            // Still allow the user to proceed with the quiz
-            setUserData(formData);
-        } finally {
-            setIsRegistrationLoading(false);
+            console.error('Error logging out:', error);
         }
     }, []);
 
@@ -201,13 +221,22 @@ const App: React.FC = () => {
         }
     };
 
-    // Show registration form if user hasn't registered yet
-    if (!userData) {
+    // Show loading while checking authentication
+    if (isCheckingAuth) {
         return (
-            <UserRegistration 
-                onSubmit={handleUserRegistration}
-                isLoading={isRegistrationLoading}
-            />
+            <div className="min-h-screen bg-gray-100 py-8 flex items-center justify-center">
+                <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Checking authentication...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Show OAuth login if user is not authenticated
+    if (!user) {
+        return (
+            <OAuthLogin onSuccess={handleAuthSuccess} />
         );
     }
 
@@ -217,7 +246,7 @@ const App: React.FC = () => {
                 <div className="container mx-auto px-4">
                     <Results 
                         results={quizResults} 
-                        userData={userData}
+                        userData={user}
                         onRetakeQuiz={handleRetakeQuiz} 
                     />
                 </div>
@@ -275,14 +304,31 @@ const App: React.FC = () => {
                 {/* Header */}
                 <div className="bg-white rounded-lg shadow-md p-6 mb-6">
                     {/* User Info */}
-                    {userData && (
+                    {user && (
                         <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                                <span><strong>Participant:</strong> {userData.name}</span>
-                                <span><strong>Email:</strong> {userData.email}</span>
-                                {userData.companyName && (
-                                    <span><strong>Company:</strong> {userData.companyName}</span>
-                                )}
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                                    <div className="flex items-center gap-2">
+                                        {user.avatar && (
+                                            <img 
+                                                src={user.avatar} 
+                                                alt={user.name}
+                                                className="w-6 h-6 rounded-full"
+                                            />
+                                        )}
+                                        <span><strong>Participant:</strong> {user.name}</span>
+                                    </div>
+                                    <span><strong>Email:</strong> {user.email}</span>
+                                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                        {user.provider}
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="text-sm text-red-600 hover:text-red-800 transition-colors duration-200"
+                                >
+                                    Logout
+                                </button>
                             </div>
                         </div>
                     )}

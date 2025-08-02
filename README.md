@@ -4,7 +4,8 @@ A React TypeScript quiz application with user registration, intelligent question
 
 ## Features
 
-- **User Registration**: Collect user details (email, name, company) before starting the quiz
+- **OAuth Authentication**: Secure login with Google and GitHub accounts
+- **Automatic User Data Collection**: Email and name automatically retrieved from OAuth providers
 - **Google Sheets Integration**: Store user data and quiz questions in Google Spreadsheets
 - **Smart Question Selection**: Automatically selects 10 random questions targeting 100 points total
 - **Multiple Choice Questions**: MCQ-style questions with single answer selection
@@ -12,36 +13,41 @@ A React TypeScript quiz application with user registration, intelligent question
 - **Random Quiz Generation**: Every quiz attempt uses a different combination of questions
 - **Progress Tracking**: Visual progress bar and question counter
 - **Navigation**: Navigate between questions with Previous/Next buttons
-- **Results Display**: Comprehensive results with score breakdown and performance metrics
+- **Results Display**: Comprehensive results with score breakdown and user information
 - **Responsive Design**: Mobile-friendly UI built with TailwindCSS
 - **Accessibility**: Keyboard navigation and ARIA labels for better accessibility
 - **TypeScript**: Full type safety throughout the application
-- **Backend API**: Express.js backend with Google Sheets API integration
+- **Backend API**: Express.js backend with OAuth and Google Sheets API integration
 - **Debug Mode**: Development view showing selected questions and their weights
 
 ## Architecture
 
 ### Frontend (React + TypeScript)
-- User registration form with validation
+- OAuth login interface with Google and GitHub
 - Quiz interface with question navigation
-- Results display with user information
-- Real-time backend communication
+- Results display with authenticated user information
+- Automatic authentication state management
+- Real-time backend communication with session handling
 
 ### Backend (Node.js + Express)
-- RESTful API endpoints for questions and user data
+- OAuth authentication with Passport.js
+- Session management with express-session
+- RESTful API endpoints for questions and user authentication
 - Google Sheets API integration for data storage
 - Automatic fallback to local data if Google Sheets unavailable
 - Comprehensive error handling and logging
 
 ### Data Storage
-- **Google Sheets**: Primary storage for questions and user data
+- **Google Sheets**: Primary storage for questions and OAuth user data
 - **Fallback Questions**: Local question bank when Google Sheets unavailable
+- **Session Storage**: Server-side session management for authentication
 - **Caching**: 5-minute cache for Google Sheets data to improve performance
 
 ## Technologies Used
 
 - **Frontend**: React 18, TypeScript, Vite, TailwindCSS
-- **Backend**: Node.js, Express.js, Google Sheets API
+- **Backend**: Node.js, Express.js, Passport.js, Google Sheets API
+- **Authentication**: OAuth 2.0 (Google & GitHub), express-session
 - **Styling**: TailwindCSS, PostCSS
 - **Development**: Hot reload, ESLint, TypeScript compilation
 
@@ -73,7 +79,12 @@ A React TypeScript quiz application with user registration, intelligent question
    cd ..
    ```
 
-4. Set up Google Sheets integration:
+4. Set up OAuth authentication:
+   - Create Google OAuth credentials at [Google Cloud Console](https://console.developers.google.com/)
+   - Create GitHub OAuth app at [GitHub Developer Settings](https://github.com/settings/applications/new)
+   - Follow the detailed OAuth setup guide in [`GOOGLE_SHEETS_SETUP.md`](./GOOGLE_SHEETS_SETUP.md)
+
+5. Set up Google Sheets integration:
    - Follow the detailed guide in [`GOOGLE_SHEETS_SETUP.md`](./GOOGLE_SHEETS_SETUP.md)
    - Create service account credentials
    - Set up your spreadsheet with required sheets
@@ -82,7 +93,7 @@ A React TypeScript quiz application with user registration, intelligent question
    ```bash
    cd backend
    cp .env.example .env
-   # Edit .env with your Google Sheets configuration
+   # Edit .env with your OAuth credentials and Google Sheets configuration
    ```
 
 6. Start the backend server:
@@ -115,7 +126,7 @@ src/
 ├── components/
 │   ├── QuestionComponent.tsx    # Individual question display
 │   ├── Results.tsx              # Results and score display
-│   ├── UserRegistration.tsx     # User registration form
+│   ├── OAuthLogin.tsx           # OAuth authentication interface
 │   └── QuizDebugInfo.tsx        # Debug info for development
 ├── data/
 │   └── questions.ts             # Fallback question bank
@@ -123,7 +134,7 @@ src/
 │   └── useQuestions.ts          # Custom hook for fetching questions
 ├── services/
 │   ├── questionService.ts       # API calls for questions
-│   └── userService.ts           # API calls for user data
+│   └── authService.ts           # OAuth authentication service
 ├── types/
 │   └── quiz.ts                  # TypeScript type definitions
 ├── utils/
@@ -147,8 +158,11 @@ backend/
 - `GET /api/questions/stats` - Get question statistics
 - `POST /api/questions/refresh` - Refresh question cache
 
-### User Data
-- `POST /api/user-data` - Save user registration data
+### Authentication
+- `GET /auth/google` - Initiate Google OAuth login
+- `GET /auth/github` - Initiate GitHub OAuth login  
+- `GET /auth/user` - Get current authenticated user
+- `POST /auth/logout` - Logout current user
 
 ### System
 - `GET /api/health` - Health check endpoint
