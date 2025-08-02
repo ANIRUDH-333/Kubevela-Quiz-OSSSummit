@@ -2,9 +2,11 @@ import React, { useState, useCallback, useEffect } from 'react';
 import QuestionComponent from './components/QuestionComponent';
 import Results from './components/Results';
 import QuizDebugInfo from './components/QuizDebugInfo';
-import { UserAnswer, QuizResult, QuizQuestion } from './types/quiz';
+import UserRegistration from './components/UserRegistration';
+import { UserAnswer, QuizResult, QuizQuestion, UserData } from './types/quiz';
 import { selectRandomQuestions } from './utils/questionSelector';
 import { useQuestions } from './hooks/useQuestions';
+import { saveUserData } from './services/userService';
 
 const App: React.FC = () => {
     const { questions: allQuestions, loading, error } = useQuestions();
@@ -15,6 +17,8 @@ const App: React.FC = () => {
     const [quizResults, setQuizResults] = useState<QuizResult | null>(null);
     const [isQuizStarted, setIsQuizStarted] = useState<boolean>(false);
     const [backendHealth, setBackendHealth] = useState<string>('checking...');
+    const [userData, setUserData] = useState<UserData | null>(null);
+    const [isRegistrationLoading, setIsRegistrationLoading] = useState<boolean>(false);
 
     // Check backend health
     useEffect(() => {
@@ -66,10 +70,25 @@ const App: React.FC = () => {
 
     // Initialize quiz when questions are loaded
     useEffect(() => {
-        if (!isQuizStarted && allQuestions.length > 0) {
+        if (!isQuizStarted && allQuestions.length > 0 && userData) {
             initializeQuiz();
         }
-    }, [initializeQuiz, isQuizStarted, allQuestions]);
+    }, [initializeQuiz, isQuizStarted, allQuestions, userData]);
+
+    const handleUserRegistration = useCallback(async (formData: UserData) => {
+        setIsRegistrationLoading(true);
+        try {
+            await saveUserData(formData);
+            setUserData(formData);
+            console.log('✅ User data saved successfully:', formData);
+        } catch (error) {
+            console.error('❌ Failed to save user data:', error);
+            // Still allow the user to proceed with the quiz
+            setUserData(formData);
+        } finally {
+            setIsRegistrationLoading(false);
+        }
+    }, []);
 
     const handleAnswerSelect = useCallback((questionId: number, optionIndex: number) => {
         setUserAnswers(prevAnswers => {
@@ -160,8 +179,15 @@ const App: React.FC = () => {
     }, [calculateResults]);
 
     const handleRetakeQuiz = useCallback(() => {
-        initializeQuiz();
-    }, [initializeQuiz]);
+        // Reset quiz state but keep user data
+        setSelectedQuestions([]);
+        setCurrentQuestionIndex(0);
+        setUserAnswers([]);
+        setIsQuizCompleted(false);
+        setQuizResults(null);
+        setIsQuizStarted(false);
+        // Don't reset userData to avoid re-registration
+    }, []);
 
     const getCurrentAnswer = useCallback((questionId: number): number | null => {
         const answer = userAnswers.find(answer => answer.questionId === questionId);
@@ -175,11 +201,25 @@ const App: React.FC = () => {
         }
     };
 
+    // Show registration form if user hasn't registered yet
+    if (!userData) {
+        return (
+            <UserRegistration 
+                onSubmit={handleUserRegistration}
+                isLoading={isRegistrationLoading}
+            />
+        );
+    }
+
     if (isQuizCompleted && quizResults) {
         return (
             <div className="min-h-screen bg-gray-100 py-8">
                 <div className="container mx-auto px-4">
-                    <Results results={quizResults} onRetakeQuiz={handleRetakeQuiz} />
+                    <Results 
+                        results={quizResults} 
+                        userData={userData}
+                        onRetakeQuiz={handleRetakeQuiz} 
+                    />
                 </div>
             </div>
         );
@@ -234,6 +274,19 @@ const App: React.FC = () => {
             <div className="container mx-auto px-4 max-w-4xl">
                 {/* Header */}
                 <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                    {/* User Info */}
+                    {userData && (
+                        <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                                <span><strong>Participant:</strong> {userData.name}</span>
+                                <span><strong>Email:</strong> {userData.email}</span>
+                                {userData.companyName && (
+                                    <span><strong>Company:</strong> {userData.companyName}</span>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     <h1 className="text-3xl font-bold text-center text-gray-800 mb-4">
                         Quiz Application
                     </h1>
@@ -268,7 +321,7 @@ const App: React.FC = () => {
                 {/* Debug Info - Development only */}
                 <QuizDebugInfo
                     questions={selectedQuestions}
-                    show={true}
+                    show={import.meta.env.DEV}
                 />
 
                 {/* Question */}

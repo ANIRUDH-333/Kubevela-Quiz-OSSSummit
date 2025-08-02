@@ -11,6 +11,12 @@ export interface UserAnswer {
     selectedOption: number;
 }
 
+export interface UserData {
+    email: string;
+    name: string;
+    companyName?: string;
+}
+
 export interface QuizResult {
     totalScore: number;
     maxScore: number;

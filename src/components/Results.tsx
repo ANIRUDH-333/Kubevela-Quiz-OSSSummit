@@ -1,12 +1,13 @@
 import React from 'react';
-import { QuizResult } from '../types/quiz';
+import { QuizResult, UserData } from '../types/quiz';
 
 interface ResultsProps {
     results: QuizResult;
+    userData?: UserData | null;
     onRetakeQuiz: () => void;
 }
 
-const Results: React.FC<ResultsProps> = ({ results, onRetakeQuiz }) => {
+const Results: React.FC<ResultsProps> = ({ results, userData, onRetakeQuiz }) => {
     const handleRetakeClick = () => {
         onRetakeQuiz();
     };
@@ -34,6 +35,20 @@ const Results: React.FC<ResultsProps> = ({ results, onRetakeQuiz }) => {
 
     return (
         <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
+            {/* User Information */}
+            {userData && (
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">Quiz Participant</h3>
+                    <div className="space-y-1 text-sm text-gray-600">
+                        <p><span className="font-medium">Name:</span> {userData.name}</p>
+                        <p><span className="font-medium">Email:</span> {userData.email}</p>
+                        {userData.companyName && (
+                            <p><span className="font-medium">Company:</span> {userData.companyName}</p>
+                        )}
+                    </div>
+                </div>
+            )}
+
             <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold text-gray-800 mb-4">Quiz Results</h2>
                 <div className="mb-6">
