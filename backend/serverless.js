@@ -14,7 +14,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production' 
+    origin: process.env.NODE_ENV === 'production'
         ? ['https://kubevela.guidewire.co.in', 'https://your-vercel-app.vercel.app']
         : 'http://localhost:5173',
     credentials: true
@@ -50,7 +50,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     passport.use(new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: process.env.NODE_ENV === 'production' 
+        callbackURL: process.env.NODE_ENV === 'production'
             ? "https://kubevela.guidewire.co.in/auth/google/callback"
             : "/auth/google/callback"
     }, async (accessToken, refreshToken, profile, done) => {
@@ -61,7 +61,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
             email: profile.emails[0].value,
             avatar: profile.photos[0].value
         };
-        
+
         await saveUserToSheets(user);
         return done(null, user);
     }));
@@ -72,7 +72,7 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
     passport.use(new GitHubStrategy({
         clientID: process.env.GITHUB_CLIENT_ID,
         clientSecret: process.env.GITHUB_CLIENT_SECRET,
-        callbackURL: process.env.NODE_ENV === 'production' 
+        callbackURL: process.env.NODE_ENV === 'production'
             ? "https://kubevela.guidewire.co.in/auth/github/callback"
             : "/auth/github/callback"
     }, async (accessToken, refreshToken, profile, done) => {
@@ -84,7 +84,7 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
             avatar: profile.photos[0].value,
             username: profile.username
         };
-        
+
         await saveUserToSheets(user);
         return done(null, user);
     }));
@@ -106,7 +106,7 @@ async function saveUserToSheets(user) {
     try {
         const userDataRange = 'UserData!A:E';
         const timestamp = new Date().toISOString();
-        
+
         const values = [[
             timestamp,
             user.email || '',
@@ -310,7 +310,7 @@ const requireAuth = (req, res, next) => {
 };
 
 // OAuth Routes
-app.get('/auth/google', 
+app.get('/auth/google',
     passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
