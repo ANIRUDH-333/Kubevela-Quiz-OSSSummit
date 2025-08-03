@@ -7,6 +7,7 @@ import { UserAnswer, QuizResult, QuizQuestion } from './types/quiz';
 import { selectRandomQuestions } from './utils/questionSelector';
 import { useQuestions } from './hooks/useQuestions';
 import { User, authService } from './services/authService';
+import { API_BASE_URL } from './config/api';
 
 const App: React.FC = () => {
     const { questions: allQuestions, loading, error } = useQuestions();
@@ -25,7 +26,7 @@ const App: React.FC = () => {
         const checkBackend = async () => {
             try {
                 console.log('🏥 Checking backend health...');
-                const response = await fetch('http://localhost:5000/api/health');
+                const response = await fetch(`${API_BASE_URL}/api/health`);
                 if (response.ok) {
                     const data = await response.json();
                     setBackendHealth(`✅ ${data.message}`);

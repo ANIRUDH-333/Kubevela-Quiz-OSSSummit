@@ -1,22 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from './config/api';
 
 const TestApp: React.FC = () => {
-    React.useEffect(() => {
+    const [apiStatus, setApiStatus] = useState('checking...');
+
+    useEffect(() => {
         console.log('🧪 Test App mounted successfully!');
 
         // Test backend connection
-        const testBackend = async () => {
+        const checkAPI = async () => {
             try {
                 console.log('🔗 Testing backend connection...');
-                const response = await fetch('http://localhost:5000/api/health');
+                const response = await fetch(`${API_BASE_URL}/api/health`);
                 const data = await response.json();
                 console.log('✅ Backend response:', data);
+                setApiStatus('✅ Connected');
             } catch (error) {
                 console.error('❌ Backend connection failed:', error);
+                setApiStatus('❌ Failed');
             }
         };
 
-        testBackend();
+        checkAPI();
     }, []);
 
     return (
@@ -27,7 +32,9 @@ const TestApp: React.FC = () => {
             <div style={{ background: '#f0f0f0', padding: '10px', margin: '10px 0' }}>
                 <strong>Environment:</strong>
                 <br />
-                API URL: {import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}
+                API URL: {`${API_BASE_URL}/api`}
+                <br />
+                API Status: {apiStatus}
                 <br />
                 Mode: {import.meta.env.MODE}
                 <br />

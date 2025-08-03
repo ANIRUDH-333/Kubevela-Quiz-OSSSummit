@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authService } from '../services/authService';
 
 interface OAuthLoginProps {
     onSuccess: (user: any) => void;
@@ -12,15 +13,9 @@ const OAuthLogin: React.FC<OAuthLoginProps> = ({ onSuccess }) => {
         // Check if user is already authenticated
         const checkAuth = async () => {
             try {
-                const response = await fetch('http://localhost:5000/auth/user', {
-                    credentials: 'include'
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.user) {
-                        onSuccess(data.user);
-                    }
+                const user = await authService.getCurrentUser();
+                if (user) {
+                    onSuccess(user);
                 }
             } catch (error) {
                 console.log('No existing authentication found');
@@ -48,13 +43,13 @@ const OAuthLogin: React.FC<OAuthLoginProps> = ({ onSuccess }) => {
     const handleGoogleLogin = () => {
         setIsLoading(true);
         setError(null);
-        window.location.href = 'http://localhost:5000/auth/google';
+        window.location.href = authService.getGoogleLoginUrl();
     };
 
     const handleGitHubLogin = () => {
         setIsLoading(true);
         setError(null);
-        window.location.href = 'http://localhost:5000/auth/github';
+        window.location.href = authService.getGitHubLoginUrl();
     };
 
     const handleKeyDown = (event: React.KeyboardEvent, action: () => void) => {

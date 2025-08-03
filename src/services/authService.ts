@@ -1,23 +1,6 @@
-const API_BASE_URL = (() => {
-    console.log('🔍 Frontend Debug - window.location.hostname:', window.location.hostname);
-    console.log('🔍 Frontend Debug - window.location.origin:', window.location.origin);
+import { API_BASE_URL } from '../config/api';
 
-    if (window.location.hostname === 'localhost') {
-        console.log('📍 Frontend: Using localhost API');
-        return 'http://localhost:5000';
-    }
-
-    // Check if we're on the final production domain
-    if (window.location.hostname === 'kubevela.guidewire.co.in') {
-        console.log('📍 Frontend: Using kubevela.guidewire.co.in API');
-        return 'https://kubevela.guidewire.co.in/api';
-    }
-
-    // For Vercel domain or any other domain, use current origin + /api
-    const apiUrl = `${window.location.origin}/api`;
-    console.log('📍 Frontend: Using origin-based API:', apiUrl);
-    return apiUrl;
-})();
+const AUTH_API_BASE_URL = `${API_BASE_URL}/api`;
 
 export interface User {
     id: string;
@@ -31,7 +14,7 @@ export interface User {
 export const authService = {
     async getCurrentUser(): Promise<User | null> {
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/user`, {
+            const response = await fetch(`${AUTH_API_BASE_URL}/auth/user`, {
                 credentials: 'include'
             });
 
@@ -48,7 +31,7 @@ export const authService = {
 
     async logout(): Promise<boolean> {
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+            const response = await fetch(`${AUTH_API_BASE_URL}/auth/logout`, {
                 method: 'POST',
                 credentials: 'include'
             });
@@ -64,10 +47,14 @@ export const authService = {
     },
 
     getGoogleLoginUrl(): string {
-        return `${API_BASE_URL}/auth/google`;
+        const url = `${AUTH_API_BASE_URL}/auth/google`;
+        console.log('🔍 Frontend: Google login URL:', url);
+        return url;
     },
 
     getGitHubLoginUrl(): string {
-        return `${API_BASE_URL}/auth/github`;
+        const url = `${AUTH_API_BASE_URL}/auth/github`;
+        console.log('🔍 Frontend: GitHub login URL:', url);
+        return url;
     }
 };

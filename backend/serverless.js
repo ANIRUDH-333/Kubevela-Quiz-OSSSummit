@@ -437,8 +437,12 @@ const requireAuth = (req, res, next) => {
 };
 
 // OAuth Routes
-app.get('/api/auth/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] })
+app.get('/api/auth/google', (req, res, next) => {
+    console.log('🔍 Google OAuth initiation - Starting authentication flow');
+    console.log('🔍 Request origin:', req.get('origin'));
+    console.log('🔍 Request referer:', req.get('referer'));
+    next();
+}, passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
 app.get('/api/auth/google/callback',
@@ -451,8 +455,12 @@ app.get('/api/auth/google/callback',
     }
 );
 
-app.get('/api/auth/github',
-    passport.authenticate('github', { scope: ['user:email'] })
+app.get('/api/auth/github', (req, res, next) => {
+    console.log('🔍 GitHub OAuth initiation - Starting authentication flow');
+    console.log('🔍 Request origin:', req.get('origin'));
+    console.log('🔍 Request referer:', req.get('referer'));
+    next();
+}, passport.authenticate('github', { scope: ['user:email'] })
 );
 
 app.get('/api/auth/github/callback',
