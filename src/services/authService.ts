@@ -1,4 +1,16 @@
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = (() => {
+    if (window.location.hostname === 'localhost') {
+        return 'http://localhost:5000';
+    }
+    
+    // Check if we're on the final production domain
+    if (window.location.hostname === 'kubevela.guidewire.co.in') {
+        return 'https://kubevela.guidewire.co.in/api';
+    }
+    
+    // Default to current origin + /api for other domains (like Vercel)
+    return `${window.location.origin}/api`;
+})();
 
 export interface User {
     id: string;

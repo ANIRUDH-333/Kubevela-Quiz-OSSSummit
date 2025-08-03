@@ -12,10 +12,56 @@ dotenv.config();
 
 const app = express();
 
+// Helper function to get the appropriate frontend URL
+function getFrontendURL(req = null) {
+    if (process.env.NODE_ENV !== 'production') {
+        return 'http://localhost:5173';
+    }
+    
+    // Check if we have a custom frontend URL set via environment variable
+    if (process.env.FRONTEND_URL) {
+        return process.env.FRONTEND_URL;
+    }
+    
+    // If we have access to the request, try to determine from the referer
+    if (req && req.get('referer')) {
+        const referer = req.get('referer');
+        if (referer.includes('kubevela.guidewire.co.in')) {
+            return 'https://kubevela.guidewire.co.in';
+        }
+        if (referer.includes('kubevela-quiz-oss-summit.vercel.app')) {
+            return 'https://kubevela-quiz-oss-summit.vercel.app';
+        }
+    }
+    
+    // Default to the final production domain
+    return 'https://kubevela.guidewire.co.in';
+}
+
+// Helper function to get the appropriate API callback URL
+function getCallbackURL(path) {
+    if (process.env.NODE_ENV !== 'production') {
+        return path;
+    }
+    
+    // Check if we have a custom API URL set via environment variable
+    if (process.env.API_BASE_URL) {
+        return `${process.env.API_BASE_URL}${path}`;
+    }
+    
+    // Default callback URLs for production
+    if (process.env.FRONTEND_URL && process.env.FRONTEND_URL.includes('kubevela.guidewire.co.in')) {
+        return `https://kubevela.guidewire.co.in/api${path}`;
+    }
+    
+    // Default to Vercel for now, but can be changed
+    return `https://kubevela-quiz-oss-summit.vercel.app/api${path}`;
+}
+
 // Middleware
 app.use(cors({
     origin: process.env.NODE_ENV === 'production'
-        ? ['https://kubevela.guidewire.co.in', 'https://your-vercel-app.vercel.app']
+        ? ['https://kubevela-quiz-oss-summit.vercel.app', 'https://kubevela.guidewire.co.in']
         : 'http://localhost:5173',
     credentials: true
 }));
@@ -50,9 +96,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     passport.use(new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: process.env.NODE_ENV === 'production'
-            ? "https://kubevela.guidewire.co.in/auth/google/callback"
-            : "/auth/google/callback"
+        callbackURL: getCallbackURL('/auth/google/callback')
     }, async (accessToken, refreshToken, profile, done) => {
         const user = {
             id: profile.id,
@@ -72,9 +116,7 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
     passport.use(new GitHubStrategy({
         clientID: process.env.GITHUB_CLIENT_ID,
         clientSecret: process.env.GITHUB_CLIENT_SECRET,
-        callbackURL: process.env.NODE_ENV === 'production'
-            ? "https://kubevela.guidewire.co.in/auth/github/callback"
-            : "/auth/github/callback"
+        callbackURL: getCallbackURL('/auth/github/callback')
     }, async (accessToken, refreshToken, profile, done) => {
         const user = {
             id: profile.id,
@@ -315,9 +357,10 @@ app.get('/auth/google',
 );
 
 app.get('/auth/google/callback',
-    passport.authenticate('google', { failureRedirect: `${process.env.NODE_ENV === 'production' ? 'https://kubevela.guidewire.co.in' : 'http://localhost:5173'}?error=auth_failed` }),
+    passport.authenticate('google', { failureRedirect: '/?error=auth_failed' }),
     (req, res) => {
-        res.redirect(`${process.env.NODE_ENV === 'production' ? 'https://kubevela.guidewire.co.in' : 'http://localhost:5173'}?auth=success`);
+        const frontendURL = getFrontendURL(req);
+        res.redirect(`${frontendURL}?auth=success`);
     }
 );
 
@@ -326,9 +369,10 @@ app.get('/auth/github',
 );
 
 app.get('/auth/github/callback',
-    passport.authenticate('github', { failureRedirect: `${process.env.NODE_ENV === 'production' ? 'https://kubevela.guidewire.co.in' : 'http://localhost:5173'}?error=auth_failed` }),
+    passport.authenticate('github', { failureRedirect: '/?error=auth_failed' }),
     (req, res) => {
-        res.redirect(`${process.env.NODE_ENV === 'production' ? 'https://kubevela.guidewire.co.in' : 'http://localhost:5173'}?auth=success`);
+        const frontendURL = getFrontendURL(req);
+        res.redirect(`${frontendURL}?auth=success`);
     }
 );
 
