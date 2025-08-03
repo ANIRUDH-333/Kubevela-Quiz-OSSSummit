@@ -11,10 +11,21 @@ export interface UserAnswer {
     selectedOption: number;
 }
 
+export interface UserData {
+    email: string;
+    name: string;
+    companyName?: string;
+}
+
 export interface QuizResult {
     totalScore: number;
     maxScore: number;
     percentage: number;
     answeredQuestions: number;
     totalQuestions: number;
+    difficultyBreakdown?: {
+        easy: { correct: number; total: number; points: number };
+        medium: { correct: number; total: number; points: number };
+        hard: { correct: number; total: number; points: number };
+    };
 }

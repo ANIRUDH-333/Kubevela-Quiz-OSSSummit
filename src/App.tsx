@@ -2,9 +2,11 @@ import React, { useState, useCallback, useEffect } from 'react';
 import QuestionComponent from './components/QuestionComponent';
 import Results from './components/Results';
 import QuizDebugInfo from './components/QuizDebugInfo';
+import OAuthLogin from './components/OAuthLogin';
 import { UserAnswer, QuizResult, QuizQuestion } from './types/quiz';
 import { selectRandomQuestions } from './utils/questionSelector';
 import { useQuestions } from './hooks/useQuestions';
+import { User, authService } from './services/authService';
 
 const App: React.FC = () => {
     const { questions: allQuestions, loading, error } = useQuestions();
@@ -15,6 +17,8 @@ const App: React.FC = () => {
     const [quizResults, setQuizResults] = useState<QuizResult | null>(null);
     const [isQuizStarted, setIsQuizStarted] = useState<boolean>(false);
     const [backendHealth, setBackendHealth] = useState<string>('checking...');
+    const [user, setUser] = useState<User | null>(null);
+    const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
 
     // Check backend health
     useEffect(() => {
@@ -53,7 +57,9 @@ const App: React.FC = () => {
     const initializeQuiz = useCallback(() => {
         if (allQuestions.length === 0) return;
 
-        const randomQuestions = selectRandomQuestions(allQuestions, 50, 10);
+        // Updated parameters: target score of 100 points for 10 questions
+        // This allows for a good mix of Easy (5), Medium (10), and Hard (20) questions
+        const randomQuestions = selectRandomQuestions(allQuestions, 100, 10);
         setSelectedQuestions(randomQuestions);
         setCurrentQuestionIndex(0);
         setUserAnswers([]);
@@ -62,12 +68,47 @@ const App: React.FC = () => {
         setIsQuizStarted(true);
     }, [allQuestions]);
 
-    // Initialize quiz when questions are loaded
+    // Initialize quiz when questions are loaded and user is authenticated
     useEffect(() => {
-        if (!isQuizStarted && allQuestions.length > 0) {
+        if (!isQuizStarted && allQuestions.length > 0 && user) {
             initializeQuiz();
         }
-    }, [initializeQuiz, isQuizStarted, allQuestions]);
+    }, [initializeQuiz, isQuizStarted, allQuestions, user]);
+
+    // Check authentication status on app load
+    useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                const currentUser = await authService.getCurrentUser();
+                setUser(currentUser);
+            } catch (error) {
+                console.error('Error checking authentication:', error);
+            } finally {
+                setIsCheckingAuth(false);
+            }
+        };
+
+        checkAuth();
+    }, []);
+
+    const handleAuthSuccess = useCallback((authenticatedUser: User) => {
+        setUser(authenticatedUser);
+        setIsCheckingAuth(false);
+    }, []);
+
+    const handleLogout = useCallback(async () => {
+        try {
+            await authService.logout();
+            setUser(null);
+            setIsQuizStarted(false);
+            setIsQuizCompleted(false);
+            setQuizResults(null);
+            setUserAnswers([]);
+            setCurrentQuestionIndex(0);
+        } catch (error) {
+            console.error('Error logging out:', error);
+        }
+    }, []);
 
     const handleAnswerSelect = useCallback((questionId: number, optionIndex: number) => {
         setUserAnswers(prevAnswers => {
@@ -101,10 +142,41 @@ const App: React.FC = () => {
         let totalScore = 0;
         const maxScore = selectedQuestions.reduce((sum, question) => sum + question.weightage, 0);
 
+        // Initialize difficulty breakdown
+        const difficultyBreakdown = {
+            easy: { correct: 0, total: 0, points: 0 },
+            medium: { correct: 0, total: 0, points: 0 },
+            hard: { correct: 0, total: 0, points: 0 }
+        };
+
+        // Count questions by difficulty
+        selectedQuestions.forEach(question => {
+            if (question.weightage === 5) {
+                difficultyBreakdown.easy.total++;
+            } else if (question.weightage === 10) {
+                difficultyBreakdown.medium.total++;
+            } else if (question.weightage === 20) {
+                difficultyBreakdown.hard.total++;
+            }
+        });
+
+        // Calculate score and difficulty breakdown
         userAnswers.forEach(answer => {
             const question = selectedQuestions.find(q => q.id === answer.questionId);
             if (question && question.correctAnswer === answer.selectedOption) {
                 totalScore += question.weightage;
+                
+                // Update difficulty-specific correct answers and points
+                if (question.weightage === 5) {
+                    difficultyBreakdown.easy.correct++;
+                    difficultyBreakdown.easy.points += question.weightage;
+                } else if (question.weightage === 10) {
+                    difficultyBreakdown.medium.correct++;
+                    difficultyBreakdown.medium.points += question.weightage;
+                } else if (question.weightage === 20) {
+                    difficultyBreakdown.hard.correct++;
+                    difficultyBreakdown.hard.points += question.weightage;
+                }
             }
         });
 
@@ -115,7 +187,8 @@ const App: React.FC = () => {
             maxScore,
             percentage,
             answeredQuestions: userAnswers.length,
-            totalQuestions: selectedQuestions.length
+            totalQuestions: selectedQuestions.length,
+            difficultyBreakdown
         };
     }, [userAnswers, selectedQuestions]);
 
@@ -126,8 +199,15 @@ const App: React.FC = () => {
     }, [calculateResults]);
 
     const handleRetakeQuiz = useCallback(() => {
-        initializeQuiz();
-    }, [initializeQuiz]);
+        // Reset quiz state but keep user data
+        setSelectedQuestions([]);
+        setCurrentQuestionIndex(0);
+        setUserAnswers([]);
+        setIsQuizCompleted(false);
+        setQuizResults(null);
+        setIsQuizStarted(false);
+        // Don't reset userData to avoid re-registration
+    }, []);
 
     const getCurrentAnswer = useCallback((questionId: number): number | null => {
         const answer = userAnswers.find(answer => answer.questionId === questionId);
@@ -141,11 +221,34 @@ const App: React.FC = () => {
         }
     };
 
+    // Show loading while checking authentication
+    if (isCheckingAuth) {
+        return (
+            <div className="min-h-screen bg-gray-100 py-8 flex items-center justify-center">
+                <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Checking authentication...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Show OAuth login if user is not authenticated
+    if (!user) {
+        return (
+            <OAuthLogin onSuccess={handleAuthSuccess} />
+        );
+    }
+
     if (isQuizCompleted && quizResults) {
         return (
             <div className="min-h-screen bg-gray-100 py-8">
                 <div className="container mx-auto px-4">
-                    <Results results={quizResults} onRetakeQuiz={handleRetakeQuiz} />
+                    <Results 
+                        results={quizResults} 
+                        userData={user}
+                        onRetakeQuiz={handleRetakeQuiz} 
+                    />
                 </div>
             </div>
         );
@@ -200,6 +303,36 @@ const App: React.FC = () => {
             <div className="container mx-auto px-4 max-w-4xl">
                 {/* Header */}
                 <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                    {/* User Info */}
+                    {user && (
+                        <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                                    <div className="flex items-center gap-2">
+                                        {user.avatar && (
+                                            <img 
+                                                src={user.avatar} 
+                                                alt={user.name}
+                                                className="w-6 h-6 rounded-full"
+                                            />
+                                        )}
+                                        <span><strong>Participant:</strong> {user.name}</span>
+                                    </div>
+                                    <span><strong>Email:</strong> {user.email}</span>
+                                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                        {user.provider}
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="text-sm text-red-600 hover:text-red-800 transition-colors duration-200"
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <h1 className="text-3xl font-bold text-center text-gray-800 mb-4">
                         Quiz Application
                     </h1>
@@ -234,7 +367,7 @@ const App: React.FC = () => {
                 {/* Debug Info - Development only */}
                 <QuizDebugInfo
                     questions={selectedQuestions}
-                    show={true}
+                    show={import.meta.env.DEV}
                 />
 
                 {/* Question */}
