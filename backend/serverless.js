@@ -86,23 +86,10 @@ function getCallbackURL(path) {
         return `http://localhost:3000${path}`;
     }
 
-    // Check if we have a custom API URL set via environment variable
-    if (process.env.API_BASE_URL) {
-        const fullUrl = `${process.env.API_BASE_URL}${path}`;
-        console.log('📍 Using API_BASE_URL callback:', fullUrl);
-        return fullUrl;
-    }
-
-    // Default callback URLs for production
-    if (process.env.FRONTEND_URL && process.env.FRONTEND_URL.includes('kubevela.guidewire.co.in')) {
-        const fullUrl = `https://kubevela.guidewire.co.in${path}`;
-        console.log('📍 Using kubevela callback:', fullUrl);
-        return fullUrl;
-    }
-
-    // Default to Vercel for now
+    // For production, always use the current deployment domain
+    // Don't use API_BASE_URL for callbacks - use the actual API domain
     const fullUrl = `https://kubevela-quiz-oss-summit.vercel.app${path}`;
-    console.log('📍 Using Vercel callback:', fullUrl);
+    console.log('📍 Using Vercel callback (fixed):', fullUrl);
     return fullUrl;
 }
 
@@ -133,7 +120,11 @@ app.use(session({
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         sameSite: isProduction ? 'none' : 'lax' // Allow cross-site cookies in production
-    }
+    },
+    // Add a session store warning for production
+    ...(isProduction && {
+        name: 'quiz.sid'
+    })
 }));
 
 // Passport configuration
@@ -464,6 +455,10 @@ app.get('/api/auth/github/callback',
 );
 
 app.get('/api/auth/user', (req, res) => {
+    console.log('🔍 Auth debug - req.isAuthenticated():', req.isAuthenticated());
+    console.log('🔍 Auth debug - req.user:', req.user);
+    console.log('🔍 Auth debug - req.session:', req.session);
+    
     if (req.isAuthenticated()) {
         res.json({
             success: true,
@@ -472,7 +467,12 @@ app.get('/api/auth/user', (req, res) => {
     } else {
         res.status(401).json({
             success: false,
-            message: 'Not authenticated'
+            message: 'Not authenticated',
+            debug: {
+                isAuthenticated: req.isAuthenticated(),
+                hasSession: !!req.session,
+                sessionId: req.sessionID
+            }
         });
     }
 });

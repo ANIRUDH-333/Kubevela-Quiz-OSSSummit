@@ -53,19 +53,21 @@ export const authService = {
                 credentials: 'include'
             });
 
-            const data = await response.json();
-            return data.success;
+            if (response.ok) {
+                return true;
+            }
+            return false;
         } catch (error) {
-            console.error('Error logging out:', error);
+            console.error('Error during logout:', error);
             return false;
         }
     },
 
-    loginWithGoogle(): void {
-        window.location.href = `${API_BASE_URL}/auth/google`;
+    getGoogleLoginUrl(): string {
+        return `${API_BASE_URL}/auth/google`;
     },
 
-    loginWithGitHub(): void {
-        window.location.href = `${API_BASE_URL}/auth/github`;
+    getGitHubLoginUrl(): string {
+        return `${API_BASE_URL}/auth/github`;
     }
 };
