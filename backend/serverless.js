@@ -253,11 +253,40 @@ async function initializeGoogleSheets() {
         }
 
         let auth;
-        if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-            auth = new google.auth.GoogleAuth({
-                keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-                scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-            });
+        if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+            // Use JSON credentials from environment variable
+            try {
+                const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+                auth = new google.auth.GoogleAuth({
+                    credentials: credentials,
+                    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+                });
+            } catch (parseError) {
+                console.error('❌ Error parsing GOOGLE_SERVICE_ACCOUNT_JSON:', parseError.message);
+                return;
+            }
+        } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+            // Check if it's a file path or JSON content
+            let credentials;
+            if (process.env.GOOGLE_APPLICATION_CREDENTIALS.startsWith('{')) {
+                // It's JSON content
+                try {
+                    credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+                    auth = new google.auth.GoogleAuth({
+                        credentials: credentials,
+                        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+                    });
+                } catch (parseError) {
+                    console.error('❌ Error parsing Google credentials JSON:', parseError.message);
+                    return;
+                }
+            } else {
+                // It's a file path
+                auth = new google.auth.GoogleAuth({
+                    keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+                    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+                });
+            }
         } else {
             try {
                 auth = new google.auth.GoogleAuth({
