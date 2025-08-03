@@ -26,28 +26,28 @@ function getFrontendURL(req = null) {
     console.log('🔍 Debug - FRONTEND_URL:', process.env.FRONTEND_URL);
     console.log('🔍 Debug - VERCEL:', process.env.VERCEL);
     console.log('🔍 Debug - VERCEL_URL:', process.env.VERCEL_URL);
-    
+
     // Force production mode if we're on Vercel
     const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
-    
+
     if (!isProduction) {
         console.log('📍 Using localhost (development mode)');
         return 'http://localhost:5173';
     }
-    
+
     // Check if we have a custom frontend URL set via environment variable
     if (process.env.FRONTEND_URL) {
         console.log('📍 Using FRONTEND_URL env var:', process.env.FRONTEND_URL);
         return process.env.FRONTEND_URL;
     }
-    
+
     // If we have access to the request, try to determine from the referer or host
     if (req) {
         const referer = req.get('referer');
         const host = req.get('host');
         console.log('🔍 Debug - Referer:', referer);
         console.log('🔍 Debug - Host:', host);
-        
+
         if (host && host.includes('kubevela.guidewire.co.in')) {
             console.log('📍 Detected kubevela.guidewire.co.in from host');
             return 'https://kubevela.guidewire.co.in';
@@ -56,7 +56,7 @@ function getFrontendURL(req = null) {
             console.log('📍 Detected Vercel from host');
             return 'https://kubevela-quiz-oss-summit.vercel.app';
         }
-        
+
         if (referer && referer.includes('kubevela.guidewire.co.in')) {
             console.log('📍 Detected kubevela.guidewire.co.in from referer');
             return 'https://kubevela.guidewire.co.in';
@@ -66,18 +66,20 @@ function getFrontendURL(req = null) {
             return 'https://kubevela-quiz-oss-summit.vercel.app';
         }
     }
-    
+
     // If on Vercel but can't detect domain, default to Vercel URL
     if (process.env.VERCEL === '1' || process.env.VERCEL_URL) {
         const vercelUrl = `https://${process.env.VERCEL_URL || 'kubevela-quiz-oss-summit.vercel.app'}`;
         console.log('📍 Using Vercel URL:', vercelUrl);
         return vercelUrl;
     }
-    
+
     // Default to Vercel for now since that's what's currently deployed
     console.log('📍 Using default: Vercel domain');
     return 'https://kubevela-quiz-oss-summit.vercel.app';
-}// Helper function to get the appropriate API callback URL
+}
+
+// Helper function to get the appropriate API callback URL
 function getCallbackURL(path) {
     if (process.env.NODE_ENV !== 'production') {
         console.log('📍 Using local callback:', path);
@@ -127,8 +129,10 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        secure: isProduction,
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: isProduction ? 'none' : 'lax' // Allow cross-site cookies in production
     }
 }));
 
