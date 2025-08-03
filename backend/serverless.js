@@ -82,8 +82,8 @@ function getFrontendURL(req = null) {
 // Helper function to get the appropriate API callback URL
 function getCallbackURL(path) {
     if (process.env.NODE_ENV !== 'production') {
-        console.log('📍 Using local callback:', path);
-        return path;
+        console.log('📍 Using local callback:', `http://localhost:3000${path}`);
+        return `http://localhost:3000${path}`;
     }
 
     // Check if we have a custom API URL set via environment variable
@@ -95,13 +95,13 @@ function getCallbackURL(path) {
 
     // Default callback URLs for production
     if (process.env.FRONTEND_URL && process.env.FRONTEND_URL.includes('kubevela.guidewire.co.in')) {
-        const fullUrl = `https://kubevela.guidewire.co.in/api${path}`;
+        const fullUrl = `https://kubevela.guidewire.co.in${path}`;
         console.log('📍 Using kubevela callback:', fullUrl);
         return fullUrl;
     }
 
     // Default to Vercel for now
-    const fullUrl = `https://kubevela-quiz-oss-summit.vercel.app/api${path}`;
+    const fullUrl = `https://kubevela-quiz-oss-summit.vercel.app${path}`;
     console.log('📍 Using Vercel callback:', fullUrl);
     return fullUrl;
 }
@@ -154,7 +154,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     passport.use(new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: getCallbackURL('/auth/google/callback')
+        callbackURL: getCallbackURL('/api/auth/google/callback')
     }, async (accessToken, refreshToken, profile, done) => {
         const user = {
             id: profile.id,
@@ -174,7 +174,7 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
     passport.use(new GitHubStrategy({
         clientID: process.env.GITHUB_CLIENT_ID,
         clientSecret: process.env.GITHUB_CLIENT_SECRET,
-        callbackURL: getCallbackURL('/auth/github/callback')
+        callbackURL: getCallbackURL('/api/auth/github/callback')
     }, async (accessToken, refreshToken, profile, done) => {
         const user = {
             id: profile.id,
@@ -439,11 +439,11 @@ const requireAuth = (req, res, next) => {
 };
 
 // OAuth Routes
-app.get('/auth/google',
+app.get('/api/auth/google',
     passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
-app.get('/auth/google/callback',
+app.get('/api/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/?error=auth_failed' }),
     (req, res) => {
         const frontendURL = getFrontendURL(req);
@@ -451,11 +451,11 @@ app.get('/auth/google/callback',
     }
 );
 
-app.get('/auth/github',
+app.get('/api/auth/github',
     passport.authenticate('github', { scope: ['user:email'] })
 );
 
-app.get('/auth/github/callback',
+app.get('/api/auth/github/callback',
     passport.authenticate('github', { failureRedirect: '/?error=auth_failed' }),
     (req, res) => {
         const frontendURL = getFrontendURL(req);
@@ -463,7 +463,7 @@ app.get('/auth/github/callback',
     }
 );
 
-app.get('/auth/user', (req, res) => {
+app.get('/api/auth/user', (req, res) => {
     if (req.isAuthenticated()) {
         res.json({
             success: true,
@@ -477,7 +477,7 @@ app.get('/auth/user', (req, res) => {
     }
 });
 
-app.post('/auth/logout', (req, res) => {
+app.post('/api/auth/logout', (req, res) => {
     req.logout((err) => {
         if (err) {
             return res.status(500).json({
