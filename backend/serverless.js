@@ -22,13 +22,14 @@ const app = express();
 
 // Helper function to get the appropriate frontend URL
 function getFrontendURL(req = null) {
-    console.log('🔍 Debug - NODE_ENV:', process.env.NODE_ENV);
-    console.log('🔍 Debug - FRONTEND_URL:', process.env.FRONTEND_URL);
-    console.log('🔍 Debug - VERCEL:', process.env.VERCEL);
-    console.log('🔍 Debug - VERCEL_URL:', process.env.VERCEL_URL);
+    console.log('🔍 getFrontendURL Debug - NODE_ENV:', process.env.NODE_ENV);
+    console.log('🔍 getFrontendURL Debug - FRONTEND_URL:', process.env.FRONTEND_URL);
+    console.log('🔍 getFrontendURL Debug - VERCEL:', process.env.VERCEL);
+    console.log('🔍 getFrontendURL Debug - VERCEL_URL:', process.env.VERCEL_URL);
 
     // Force production mode if we're on Vercel
     const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+    console.log('🔍 getFrontendURL Debug - isProduction:', isProduction);
 
     if (!isProduction) {
         console.log('📍 Using localhost (development mode)');
@@ -39,6 +40,12 @@ function getFrontendURL(req = null) {
     if (process.env.FRONTEND_URL) {
         console.log('📍 Using FRONTEND_URL env var:', process.env.FRONTEND_URL);
         return process.env.FRONTEND_URL;
+    }
+
+    // TEMPORARY: Force production URL for OAuth callbacks
+    if (isProduction) {
+        console.log('📍 Using hardcoded production URL');
+        return 'https://kubevela-quiz-oss-summit.vercel.app';
     }
 
     // If we have access to the request, try to determine from the referer or host
@@ -437,7 +444,9 @@ app.get('/api/auth/google',
 app.get('/api/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/?error=auth_failed' }),
     (req, res) => {
+        console.log('🔍 Google OAuth callback - About to get frontend URL');
         const frontendURL = getFrontendURL(req);
+        console.log('🔍 Google OAuth callback - Frontend URL resolved to:', frontendURL);
         res.redirect(`${frontendURL}?auth=success`);
     }
 );
@@ -449,7 +458,9 @@ app.get('/api/auth/github',
 app.get('/api/auth/github/callback',
     passport.authenticate('github', { failureRedirect: '/?error=auth_failed' }),
     (req, res) => {
+        console.log('🔍 GitHub OAuth callback - About to get frontend URL');
         const frontendURL = getFrontendURL(req);
+        console.log('🔍 GitHub OAuth callback - Frontend URL resolved to:', frontendURL);
         res.redirect(`${frontendURL}?auth=success`);
     }
 );
@@ -458,7 +469,7 @@ app.get('/api/auth/user', (req, res) => {
     console.log('🔍 Auth debug - req.isAuthenticated():', req.isAuthenticated());
     console.log('🔍 Auth debug - req.user:', req.user);
     console.log('🔍 Auth debug - req.session:', req.session);
-    
+
     if (req.isAuthenticated()) {
         res.json({
             success: true,
