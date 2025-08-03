@@ -89,6 +89,27 @@ Use one GitHub OAuth app and manually update the callback URL when switching dom
 - Current: `https://kubevela-quiz-oss-summit.vercel.app/api/auth/github/callback`
 - When moving to production: `https://kubevela.guidewire.co.in/api/auth/github/callback`
 
+## ⚠️ CRITICAL: Set Environment Variables in Vercel
+
+**The redirect issue happens because environment variables are not set in Vercel.**
+
+1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
+2. Select your project (`kubevela-quiz-oss-summit`)
+3. Go to "Settings" → "Environment Variables"
+4. Add these **required** variables:
+
+```bash
+NODE_ENV=production
+FRONTEND_URL=https://kubevela-quiz-oss-summit.vercel.app
+GOOGLE_CLIENT_ID=your_actual_google_client_id
+GOOGLE_CLIENT_SECRET=your_actual_google_client_secret
+GITHUB_CLIENT_ID=your_actual_github_client_id
+GITHUB_CLIENT_SECRET=your_actual_github_client_secret
+SESSION_SECRET=your_secure_random_string_at_least_32_chars
+```
+
+5. **Redeploy** your application after adding these variables
+
 ## Environment Variables for Different Deployments
 
 ### For Vercel Deployment

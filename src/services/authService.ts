@@ -1,15 +1,22 @@
 const API_BASE_URL = (() => {
+    console.log('🔍 Frontend Debug - window.location.hostname:', window.location.hostname);
+    console.log('🔍 Frontend Debug - window.location.origin:', window.location.origin);
+
     if (window.location.hostname === 'localhost') {
+        console.log('📍 Frontend: Using localhost API');
         return 'http://localhost:5000';
     }
-    
+
     // Check if we're on the final production domain
     if (window.location.hostname === 'kubevela.guidewire.co.in') {
+        console.log('📍 Frontend: Using kubevela.guidewire.co.in API');
         return 'https://kubevela.guidewire.co.in/api';
     }
-    
-    // Default to current origin + /api for other domains (like Vercel)
-    return `${window.location.origin}/api`;
+
+    // For Vercel domain or any other domain, use current origin + /api
+    const apiUrl = `${window.location.origin}/api`;
+    console.log('📍 Frontend: Using origin-based API:', apiUrl);
+    return apiUrl;
 })();
 
 export interface User {
@@ -27,7 +34,7 @@ export const authService = {
             const response = await fetch(`${API_BASE_URL}/auth/user`, {
                 credentials: 'include'
             });
-            
+
             if (response.ok) {
                 const data = await response.json();
                 return data.success ? data.user : null;
@@ -45,7 +52,7 @@ export const authService = {
                 method: 'POST',
                 credentials: 'include'
             });
-            
+
             const data = await response.json();
             return data.success;
         } catch (error) {

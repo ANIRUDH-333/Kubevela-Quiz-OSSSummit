@@ -10,59 +10,100 @@ import { Strategy as GitHubStrategy } from 'passport-github2';
 
 dotenv.config();
 
+// Debug environment variables on startup
+console.log('🚀 Server starting with environment:');
+console.log('📍 NODE_ENV:', process.env.NODE_ENV);
+console.log('📍 FRONTEND_URL:', process.env.FRONTEND_URL);
+console.log('📍 API_BASE_URL:', process.env.API_BASE_URL);
+console.log('📍 GOOGLE_CLIENT_ID set:', !!process.env.GOOGLE_CLIENT_ID);
+console.log('📍 GITHUB_CLIENT_ID set:', !!process.env.GITHUB_CLIENT_ID);
+
 const app = express();
 
 // Helper function to get the appropriate frontend URL
 function getFrontendURL(req = null) {
+    console.log('🔍 Debug - NODE_ENV:', process.env.NODE_ENV);
+    console.log('🔍 Debug - FRONTEND_URL:', process.env.FRONTEND_URL);
+
     if (process.env.NODE_ENV !== 'production') {
+        console.log('📍 Using localhost (development mode)');
         return 'http://localhost:5173';
     }
-    
+
     // Check if we have a custom frontend URL set via environment variable
     if (process.env.FRONTEND_URL) {
+        console.log('📍 Using FRONTEND_URL env var:', process.env.FRONTEND_URL);
         return process.env.FRONTEND_URL;
     }
-    
-    // If we have access to the request, try to determine from the referer
-    if (req && req.get('referer')) {
+
+    // If we have access to the request, try to determine from the referer or host
+    if (req) {
         const referer = req.get('referer');
-        if (referer.includes('kubevela.guidewire.co.in')) {
+        const host = req.get('host');
+        console.log('🔍 Debug - Referer:', referer);
+        console.log('🔍 Debug - Host:', host);
+
+        if (host && host.includes('kubevela.guidewire.co.in')) {
+            console.log('📍 Detected kubevela.guidewire.co.in from host');
             return 'https://kubevela.guidewire.co.in';
         }
-        if (referer.includes('kubevela-quiz-oss-summit.vercel.app')) {
+        if (host && host.includes('vercel.app')) {
+            console.log('📍 Detected Vercel from host');
+            return 'https://kubevela-quiz-oss-summit.vercel.app';
+        }
+
+        if (referer && referer.includes('kubevela.guidewire.co.in')) {
+            console.log('📍 Detected kubevela.guidewire.co.in from referer');
+            return 'https://kubevela.guidewire.co.in';
+        }
+        if (referer && referer.includes('kubevela-quiz-oss-summit.vercel.app')) {
+            console.log('📍 Detected Vercel from referer');
             return 'https://kubevela-quiz-oss-summit.vercel.app';
         }
     }
-    
-    // Default to the final production domain
-    return 'https://kubevela.guidewire.co.in';
+
+    // Default to Vercel for now since that's what's currently deployed
+    console.log('📍 Using default: Vercel domain');
+    return 'https://kubevela-quiz-oss-summit.vercel.app';
 }
 
 // Helper function to get the appropriate API callback URL
 function getCallbackURL(path) {
     if (process.env.NODE_ENV !== 'production') {
+        console.log('📍 Using local callback:', path);
         return path;
     }
-    
+
     // Check if we have a custom API URL set via environment variable
     if (process.env.API_BASE_URL) {
-        return `${process.env.API_BASE_URL}${path}`;
+        const fullUrl = `${process.env.API_BASE_URL}${path}`;
+        console.log('📍 Using API_BASE_URL callback:', fullUrl);
+        return fullUrl;
     }
-    
+
     // Default callback URLs for production
     if (process.env.FRONTEND_URL && process.env.FRONTEND_URL.includes('kubevela.guidewire.co.in')) {
-        return `https://kubevela.guidewire.co.in/api${path}`;
+        const fullUrl = `https://kubevela.guidewire.co.in/api${path}`;
+        console.log('📍 Using kubevela callback:', fullUrl);
+        return fullUrl;
     }
-    
-    // Default to Vercel for now, but can be changed
-    return `https://kubevela-quiz-oss-summit.vercel.app/api${path}`;
+
+    // Default to Vercel for now
+    const fullUrl = `https://kubevela-quiz-oss-summit.vercel.app/api${path}`;
+    console.log('📍 Using Vercel callback:', fullUrl);
+    return fullUrl;
 }
 
 // Middleware
+const corsOrigins = process.env.NODE_ENV === 'production'
+    ? ['https://kubevela-quiz-oss-summit.vercel.app', 'https://kubevela.guidewire.co.in']
+    : 'http://localhost:5173';
+
+console.log('🔧 CORS configuration - NODE_ENV:', process.env.NODE_ENV);
+console.log('🔧 CORS origins:', corsOrigins);
+
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production'
-        ? ['https://kubevela-quiz-oss-summit.vercel.app', 'https://kubevela.guidewire.co.in']
-        : 'http://localhost:5173',
+    origin: corsOrigins,
     credentials: true
 }));
 app.use(express.json());

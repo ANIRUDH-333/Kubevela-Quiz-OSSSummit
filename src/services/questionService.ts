@@ -1,6 +1,31 @@
 import { QuizQuestion } from '../types/quiz';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = (() => {
+    console.log('🔍 QuestionService Debug - window.location.hostname:', window.location.hostname);
+    console.log('🔍 QuestionService Debug - window.location.origin:', window.location.origin);
+
+    // Check for environment variable first
+    if (import.meta.env.VITE_API_URL) {
+        console.log('📍 QuestionService: Using VITE_API_URL:', import.meta.env.VITE_API_URL);
+        return import.meta.env.VITE_API_URL;
+    }
+
+    if (window.location.hostname === 'localhost') {
+        console.log('📍 QuestionService: Using localhost API');
+        return 'http://localhost:5000/api';
+    }
+
+    // Check if we're on the final production domain
+    if (window.location.hostname === 'kubevela.guidewire.co.in') {
+        console.log('📍 QuestionService: Using kubevela.guidewire.co.in API');
+        return 'https://kubevela.guidewire.co.in/api';
+    }
+
+    // For Vercel domain or any other domain, use current origin + /api
+    const apiUrl = `${window.location.origin}/api`;
+    console.log('📍 QuestionService: Using origin-based API:', apiUrl);
+    return apiUrl;
+})();
 
 export interface QuestionResponse {
     success: boolean;
